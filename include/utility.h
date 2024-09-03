@@ -68,6 +68,7 @@ public:
 
 	std::string name;
     std::string robot_id;
+    bool name_list;
 
     //Topics
     string pointCloudTopic;
@@ -80,6 +81,7 @@ public:
     string baselinkFrame;
     string odometryFrame;
     string mapFrame;
+    bool mapFrameAsChild;
 
     // GPS Settings
     bool useImuHeadingInitialization;
@@ -155,13 +157,22 @@ public:
     ParamServer()
     {
 		// Robot info
-		std::string ns = nh.getNamespace(); // namespace of robot
-		if(ns.length() != 2)
-		{
-			ROS_ERROR("Invalid robot prefix (should be either 'a-z' or 'A-Z'): %s", ns.c_str());
-			ros::shutdown();
-		}
-		name = ns.substr(1, 1); // leave '/'
+        nh.param<bool>("/name_list", name_list, false);
+        std::string ns = nh.getNamespace(); // namespace of robot
+
+        if(name_list == false)
+        {
+            if(ns.length() != 2)
+            {
+                ROS_ERROR("Invalid robot prefix (should be either 'a-z' or 'A-Z'): %s", ns.c_str());
+                ros::shutdown();
+            }
+            name = ns.substr(1, 1); // leave '/'
+        }
+        else
+        {
+            name = ns.substr(1, 4); // remove '/' character
+        }
 
         nh.param<std::string>("/robot_id", robot_id, "roboat");
 
@@ -174,6 +185,7 @@ public:
         nh.param<std::string>("lio_sam/baselinkFrame", baselinkFrame, "base_link");
         nh.param<std::string>("lio_sam/odometryFrame", odometryFrame, "odom");
         nh.param<std::string>("lio_sam/mapFrame", mapFrame, "map");
+        nh.param<bool>("lio_sam/mapFrameAsChild", mapFrameAsChild, false);
 
         nh.param<bool>("lio_sam/useImuHeadingInitialization", useImuHeadingInitialization, false);
         nh.param<bool>("lio_sam/useGpsElevation", useGpsElevation, false);
