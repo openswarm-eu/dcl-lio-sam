@@ -4,6 +4,7 @@
 #define PCL_NO_PRECOMPILE 
 
 #include <ros/ros.h>
+#include <robot_localization/navsat_conversions.h>
 
 #include <std_msgs/Header.h>
 #include <std_msgs/Float64MultiArray.h>
@@ -75,6 +76,7 @@ public:
     string imuTopic;
     string odomTopic;
     string gpsTopic;
+    string gpsFixTopic;
 
     //Frames
     string lidarFrame;
@@ -154,6 +156,11 @@ public:
     float globalMapVisualizationPoseDensity;
     float globalMapVisualizationLeafSize;
 
+    // Localisation
+    bool gpsInitialLocalization;
+    double gpsBaseStationLat;
+    double gpsBaseStationLong;
+
     ParamServer()
     {
 		// Robot info
@@ -180,6 +187,7 @@ public:
         nh.param<std::string>("lio_sam/imuTopic", imuTopic, "imu_correct");
         nh.param<std::string>("lio_sam/odomTopic", odomTopic, "odometry/imu");
         nh.param<std::string>("lio_sam/gpsTopic", gpsTopic, "odometry/gps");
+        nh.param<std::string>("lio_sam/gpsFixTopic", gpsFixTopic, "gps/fix");
 
         nh.param<std::string>("lio_sam/lidarFrame", lidarFrame, "base_link");
         nh.param<std::string>("lio_sam/baselinkFrame", baselinkFrame, "base_link");
@@ -267,6 +275,10 @@ public:
         nh.param<float>("lio_sam/globalMapVisualizationSearchRadius", globalMapVisualizationSearchRadius, 1e3);
         nh.param<float>("lio_sam/globalMapVisualizationPoseDensity", globalMapVisualizationPoseDensity, 10.0);
         nh.param<float>("lio_sam/globalMapVisualizationLeafSize", globalMapVisualizationLeafSize, 1.0);
+
+        nh.param<bool>("lio_sam/gpsInitialLocalization", gpsInitialLocalization, true);
+        nh.param<double>("lio_sam/gpsBaseStationLat", gpsBaseStationLat, 41.22060674);
+        nh.param<double>("lio_sam/gpsBaseStationLong", gpsBaseStationLong, -8.52731794);
 
         usleep(100);
     }

@@ -78,11 +78,13 @@ public:
 
     ros::Subscriber subCloud;
     ros::Subscriber subGPS;
+    ros::Subscriber subGPSFix;
     ros::Subscriber subLoop;
 
     ros::ServiceServer srvSaveMap;
 
     std::deque<nav_msgs::Odometry> gpsQueue;
+    std::deque<sensor_msgs::NavSatFix> gpsFixQueue;
     dcl_lio_sam::cloud_info cloudInfo;
 
     vector<pcl::PointCloud<PointType>::Ptr> cornerCloudKeyFrames;
@@ -154,6 +156,16 @@ public:
     Eigen::Affine3f incrementalOdometryAffineFront;
     Eigen::Affine3f incrementalOdometryAffineBack;
 
+    enum InitializedFlag
+    {
+        NonInitialized,
+        Initializing,
+        Initialized
+    };
+    InitializedFlag initializedFlag;
+
+    float initialPose[6];
+
     mapOptimization()
     {
         ISAM2Params parameters;
@@ -169,6 +181,7 @@ public:
 
         subCloud = nh.subscribe<dcl_lio_sam::cloud_info>("lio_sam/feature/cloud_info", 1, &mapOptimization::laserCloudInfoHandler, this, ros::TransportHints().tcpNoDelay());
         subGPS   = nh.subscribe<nav_msgs::Odometry> (gpsTopic, 200, &mapOptimization::gpsHandler, this, ros::TransportHints().tcpNoDelay());
+        subGPSFix = nh.subscribe<sensor_msgs::NavSatFix> (gpsFixTopic, 200, &mapOptimization::gpsHandlerFix, this, ros::TransportHints().tcpNoDelay());
         // subLoop  = nh.subscribe<std_msgs::Float64MultiArray>("lio_loop/loop_closure_detection", 1, &mapOptimization::loopInfoHandler, this, ros::TransportHints().tcpNoDelay());
 
         // srvSaveMap  = nh.advertiseService("lio_sam/save_map", &mapOptimization::saveMapService, this);
@@ -230,6 +243,13 @@ public:
         }
 
         matP = cv::Mat(6, 6, CV_32F, cv::Scalar::all(0));
+
+        // GPS localisation
+        for (int i = 0; i < 6; ++i){
+            initialPose[i] = 0;
+        }
+
+        initializedFlag = NonInitialized;
     }
 
     void laserCloudInfoHandler(const dcl_lio_sam::cloud_infoConstPtr& msgIn)
@@ -243,6 +263,11 @@ public:
         pcl::fromROSMsg(msgIn->cloud_corner,  *laserCloudCornerLast);
         pcl::fromROSMsg(msgIn->cloud_surface, *laserCloudSurfLast);
 
+        if (initializedFlag == NonInitialized || initializedFlag == Initializing)
+        {
+            initLocalization();
+            return;
+        }
         std::lock_guard<std::mutex> lock(mtx);
 
         static double timeLastProcessing = -1;
@@ -317,6 +342,12 @@ public:
     void gpsHandler(const nav_msgs::Odometry::ConstPtr& gpsMsg)
     {
         gpsQueue.push_back(*gpsMsg);
+    }
+
+    void gpsHandlerFix(const sensor_msgs::NavSatFix::ConstPtr& gpsFixMsg)
+    {
+        gpsFixQueue.push_front(*gpsFixMsg);
+        // cout << to_string(gpsFixMsg->status.status)  << endl;
     }
 
     void pointAssociateToMap(PointType const * const pi, PointType * const po)
@@ -855,7 +886,7 @@ public:
 
         static Eigen::Affine3f lastImuTransformation;
         // initialization
-        if (dm.getLocalKeyposesCloud3D()->empty())
+        if (dm.getLocalKeyposesCloud3D()->empty() || initializedFlag == NonInitialized)
         {
             transformTobeMapped[0] = cloudInfo.imuRollInit;
             transformTobeMapped[1] = cloudInfo.imuPitchInit;
@@ -864,7 +895,9 @@ public:
             if (!useImuHeadingInitialization)
                 transformTobeMapped[2] = 0;
 
-            lastImuTransformation = pcl::getTransformation(0, 0, 0, cloudInfo.imuRollInit, cloudInfo.imuPitchInit, cloudInfo.imuYawInit); // save imu before return;
+            // lastImuTransformation = pcl::getTransformation(0, 0, 0, cloudInfo.imuRollInit, cloudInfo.imuPitchInit, cloudInfo.imuYawInit); // save imu before return;
+            lastImuTransformation = pcl::getTransformation(initialPose[3], initialPose[4], initialPose[5], //
+                    cloudInfo.imuRollInit, cloudInfo.imuPitchInit, cloudInfo.imuYawInit); // save imu before return;
             return;
         }
 
@@ -888,7 +921,9 @@ public:
 
                 lastImuPreTransformation = transBack;
 
-                lastImuTransformation = pcl::getTransformation(0, 0, 0, cloudInfo.imuRollInit, cloudInfo.imuPitchInit, cloudInfo.imuYawInit); // save imu before return;
+                // lastImuTransformation = pcl::getTransformation(0, 0, 0, cloudInfo.imuRollInit, cloudInfo.imuPitchInit, cloudInfo.imuYawInit); // save imu before return;
+                lastImuTransformation = pcl::getTransformation(initialPose[3], initialPose[4], initialPose[5], //
+                    cloudInfo.imuRollInit, cloudInfo.imuPitchInit, cloudInfo.imuYawInit); // save imu before return;
                 return;
             }
         }
@@ -896,7 +931,9 @@ public:
         // use imu incremental estimation for pose guess (only rotation)
         if (cloudInfo.imuAvailable == true)
         {
-            Eigen::Affine3f transBack = pcl::getTransformation(0, 0, 0, cloudInfo.imuRollInit, cloudInfo.imuPitchInit, cloudInfo.imuYawInit);
+            // Eigen::Affine3f transBack = pcl::getTransformation(0, 0, 0, cloudInfo.imuRollInit, cloudInfo.imuPitchInit, cloudInfo.imuYawInit);
+            Eigen::Affine3f transBack = pcl::getTransformation(initialPose[3], initialPose[4], initialPose[5], //
+                    cloudInfo.imuRollInit, cloudInfo.imuPitchInit, cloudInfo.imuYawInit);
             Eigen::Affine3f transIncre = lastImuTransformation.inverse() * transBack;
 
             Eigen::Affine3f transTobe = trans2Affine3f(transformTobeMapped);
@@ -904,7 +941,9 @@ public:
             pcl::getTranslationAndEulerAngles(transFinal, transformTobeMapped[3], transformTobeMapped[4], transformTobeMapped[5], 
                                                           transformTobeMapped[0], transformTobeMapped[1], transformTobeMapped[2]);
 
-            lastImuTransformation = pcl::getTransformation(0, 0, 0, cloudInfo.imuRollInit, cloudInfo.imuPitchInit, cloudInfo.imuYawInit); // save imu before return;
+            lastImuTransformation = pcl::getTransformation(initialPose[3], initialPose[4], initialPose[5], //
+                    cloudInfo.imuRollInit, cloudInfo.imuPitchInit, cloudInfo.imuYawInit); // save imu before return;
+            // lastImuTransformation = pcl::getTransformation(0, 0, 0, cloudInfo.imuRollInit, cloudInfo.imuPitchInit, cloudInfo.imuYawInit); // save imu before return;
             return;
         }
     }
@@ -1800,6 +1839,50 @@ public:
     //         pubPath.publish(globalPath);
     //     }
     // }
+
+
+    void performInitGPS(sensor_msgs::NavSatFix thisGPScheck)
+    {
+        double x1, y1, x0, y0;
+
+        RobotLocalization::NavsatConversions::UTM(thisGPScheck.latitude,thisGPScheck.longitude, &x1, &y1);
+        RobotLocalization::NavsatConversions::UTM(gpsBaseStationLat, gpsBaseStationLong, &x0, &y0);
+
+        initialPose[3] = float(x1 - x0);
+        initialPose[4] = float(y1 - y0);
+        initialPose[5] = 0;
+
+        cout << "x: " << initialPose[3]  << std::endl;
+        cout << "y: " << initialPose[4]  << std::endl;
+        cout << "z: " << initialPose[5]  << std::endl;
+    }
+
+    void initLocalization()
+    {
+        // GPS
+        if (gpsInitialLocalization == true)
+        {
+            bool testGPS = true;
+            sensor_msgs::NavSatFix thisGPScheck;
+            thisGPScheck = gpsFixQueue.front();
+            if (to_string(thisGPScheck.status.status) == "2")
+            {
+                performInitGPS(thisGPScheck);
+            }
+            else
+            {
+                return;
+            }
+        }
+
+        updateInitialGuess();
+
+        transformTobeMapped[3] = initialPose[3];
+        transformTobeMapped[4] = initialPose[4];
+        transformTobeMapped[5] = initialPose[5];
+
+        initializedFlag = Initialized;
+    }
 };
 
 
