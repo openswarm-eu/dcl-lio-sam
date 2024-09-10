@@ -270,7 +270,7 @@ public:
                 pcl::PointCloud<pcl::PointXYZI>::Ptr keyframe(new pcl::PointCloud<pcl::PointXYZI>());
                 pcl::fromROSMsg(msgIn->cloud_deskewed, *keyframe);
                 
-                dm.performDistributedMapping(pose_to, keyframe, timeLaserInfoStamp);
+                dm.performDistributedMapping(pose_to, keyframe, timeLaserInfoStamp, gpsQueue);
 
                 if(dm.updatePoses())
                 {
