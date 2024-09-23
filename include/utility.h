@@ -157,6 +157,7 @@ public:
     float globalMapVisualizationLeafSize;
 
     // Localisation
+    bool localizationInitialized;
     bool gpsInitialLocalization;
     double gpsBaseStationLat;
     double gpsBaseStationLong;
@@ -276,6 +277,7 @@ public:
         nh.param<float>("lio_sam/globalMapVisualizationPoseDensity", globalMapVisualizationPoseDensity, 10.0);
         nh.param<float>("lio_sam/globalMapVisualizationLeafSize", globalMapVisualizationLeafSize, 1.0);
 
+        nh.param<bool>("lio_sam/localizationInitialized", localizationInitialized, true);
         nh.param<bool>("lio_sam/gpsInitialLocalization", gpsInitialLocalization, true);
         nh.param<double>("lio_sam/gpsBaseStationLat", gpsBaseStationLat, 41.22060674);
         nh.param<double>("lio_sam/gpsBaseStationLong", gpsBaseStationLong, -8.52731794);

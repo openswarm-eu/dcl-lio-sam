@@ -249,7 +249,14 @@ public:
             initialPose[i] = 0;
         }
 
-        initializedFlag = NonInitialized;
+        if (localizationInitialized == true)
+        {
+            initializedFlag = Initialized;
+        }
+        else
+        {
+            initializedFlag = NonInitialized;
+        }
     }
 
     void laserCloudInfoHandler(const dcl_lio_sam::cloud_infoConstPtr& msgIn)
