@@ -184,7 +184,7 @@ public:
         subGPSFix = nh.subscribe<sensor_msgs::NavSatFix> (gpsFixTopic, 200, &mapOptimization::gpsHandlerFix, this, ros::TransportHints().tcpNoDelay());
         // subLoop  = nh.subscribe<std_msgs::Float64MultiArray>("lio_loop/loop_closure_detection", 1, &mapOptimization::loopInfoHandler, this, ros::TransportHints().tcpNoDelay());
 
-        // srvSaveMap  = nh.advertiseService("lio_sam/save_map", &mapOptimization::saveMapService, this);
+        srvSaveMap  = nh.advertiseService("lio_sam/save_map", &mapOptimization::saveMapService, this);
 
         pubHistoryKeyFrames   = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/icp_loop_closure_history_cloud", 1);
         pubIcpKeyFrames       = nh.advertise<sensor_msgs::PointCloud2>("lio_sam/mapping/icp_loop_closure_corrected_cloud", 1);
@@ -273,7 +273,7 @@ public:
         if (initializedFlag == NonInitialized || initializedFlag == Initializing)
         {
             initLocalization();
-            return;
+            //return;
         }
         std::lock_guard<std::mutex> lock(mtx);
 
@@ -455,8 +455,12 @@ public:
 
 
 
-    // bool saveMapService(dcl_lio_sam::save_mapRequest& req, dcl_lio_sam::save_mapResponse& res)
-    // {
+    bool saveMapService(dcl_lio_sam::save_mapRequest& req, dcl_lio_sam::save_mapResponse& res)
+    {
+        res.global_map = dm.distributedMapping::globalMapService();
+        res.success = true;
+        return true;
+    }
     //   string saveMapDirectory;
 
     //   cout << "****************************************************" << endl;
@@ -1882,7 +1886,7 @@ public:
             }
         }
 
-        updateInitialGuess();
+        //updateInitialGuess();
 
         transformTobeMapped[3] = initialPose[3];
         transformTobeMapped[4] = initialPose[4];
