@@ -275,6 +275,16 @@ public:
             initLocalization();
             //return;
         }
+
+        if (waitGPSFix == true && gpsQueue.empty())
+        {
+            ROS_WARN_THROTTLE(2, "gpsFixTopic is empty");
+            return;
+        }
+        else{
+            ROS_WARN_ONCE("gpsFixTopic initialised.");
+        }
+
         std::lock_guard<std::mutex> lock(mtx);
 
         static double timeLastProcessing = -1;
@@ -301,7 +311,7 @@ public:
                 // keyframe
                 pcl::PointCloud<pcl::PointXYZI>::Ptr keyframe(new pcl::PointCloud<pcl::PointXYZI>());
                 pcl::fromROSMsg(msgIn->cloud_deskewed, *keyframe);
-                
+
                 dm.performDistributedMapping(pose_to, keyframe, timeLaserInfoStamp, gpsQueue);
 
                 if(dm.updatePoses())

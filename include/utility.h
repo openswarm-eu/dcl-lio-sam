@@ -161,6 +161,7 @@ public:
     bool gpsInitialLocalization;
     double gpsBaseStationLat;
     double gpsBaseStationLong;
+    bool waitGPSFix;
 
     ParamServer()
     {
@@ -281,6 +282,7 @@ public:
         nh.param<bool>("lio_sam/gpsInitialLocalization", gpsInitialLocalization, true);
         nh.param<double>("lio_sam/gpsBaseStationLat", gpsBaseStationLat, 41.22060674);
         nh.param<double>("lio_sam/gpsBaseStationLong", gpsBaseStationLong, -8.52731794);
+        nh.param<bool>("lio_sam/waitGPSFix", waitGPSFix, true);        
 
         usleep(100);
     }
