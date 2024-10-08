@@ -162,6 +162,7 @@ public:
     double gpsBaseStationLat;
     double gpsBaseStationLong;
     bool waitGPSFix;
+    bool isGPSFix = false;
 
     ParamServer()
     {

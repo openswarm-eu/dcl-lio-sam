@@ -318,7 +318,48 @@ public:
                 pcl::PointCloud<pcl::PointXYZI>::Ptr keyframe(new pcl::PointCloud<pcl::PointXYZI>());
                 pcl::fromROSMsg(msgIn->cloud_deskewed, *keyframe);
 
-                dm.performDistributedMapping(pose_to, keyframe, timeLaserInfoStamp, gpsQueue);
+                // gps factor
+                isGPSFix = false;
+                try
+                {
+                    //checks if the fix is been published and if gpsTopic is to be considered
+                    if (gpsFixTopic != "" && gpsTopic != "" && to_string(gpsFixQueue.front().status.status) != "")
+                    {
+                        if (gpsFixTopic != "" && to_string(gpsFixQueue.front().status.status) !="")
+                        {
+                            sensor_msgs::NavSatFix thisGPScheck;
+                            if (&gpsFixQueue.front() != nullptr)
+                            {
+                                thisGPScheck = gpsFixQueue.front();
+                                // cout << "****************************************************" << endl;
+                                // cout << "Found Status : "<< to_string(thisGPScheck.status.status) << endl;
+                                if (to_string(thisGPScheck.status.status) == "2")
+                                {
+                                    cout << "****************************************************" << endl;
+                                    cout << "Adding GPS Factor - GPS Status: " << to_string(thisGPScheck.status.status)  << std::endl;
+                                    isGPSFix = true;
+                                }
+                                else
+                                {
+                                    cout << "****************************************************" << endl;
+                                    cout << "Not Adding GPS Factor - GPS Status: " << to_string(thisGPScheck.status.status)  << std::endl;
+                                }
+                            }
+                            else
+                            {
+                                //There is no gps been published so disable gps topic
+                                cout << "****************************************************" << endl;
+                                cout << "GPS topic is not going to be used. " << std::endl;
+                            }
+                        }
+                    }
+                }
+                catch (std::bad_alloc & exception)
+                {
+                    std::cerr << "\n" << exception.what() << "-> Bad Memory Allocation: Is GPS Fix or GPS Status been published? \n";
+                }
+
+                dm.performDistributedMapping(pose_to, keyframe, timeLaserInfoStamp, gpsQueue, isGPSFix);
 
                 if(dm.updatePoses())
                 {
