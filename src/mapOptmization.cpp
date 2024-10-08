@@ -276,13 +276,19 @@ public:
             //return;
         }
 
-        if (waitGPSFix == true && gpsQueue.empty())
-        {
-            ROS_WARN_THROTTLE(2, "gpsFixTopic is empty");
-            return;
-        }
-        else{
-            ROS_WARN_ONCE("gpsFixTopic initialised.");
+        static bool initial_gps = false;
+		if(!initial_gps && waitGPSFix == true)
+		{
+            if (gpsQueue.empty())
+            {
+                ROS_WARN_THROTTLE(2, "gpsFixTopic is empty");
+                return;
+            }
+            else
+            {
+                initial_gps = true;
+                ROS_WARN_ONCE("gpsFixTopic initialised.");
+            }
         }
 
         std::lock_guard<std::mutex> lock(mtx);
