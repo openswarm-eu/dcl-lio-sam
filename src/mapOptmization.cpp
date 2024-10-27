@@ -249,12 +249,14 @@ public:
             initialPose[i] = 0;
         }
 
-        if (localizationInitialized == true)
+        if (gpsInitialLocalization == false)
         {
+            ROS_INFO("DCL-SLAM will not be initialised with GPS.");
             initializedFlag = Initialized;
         }
         else
         {
+            ROS_INFO("DCL-SLAM will be initialised with GPS.");
             initializedFlag = NonInitialized;
         }
     }
@@ -272,23 +274,8 @@ public:
 
         if (initializedFlag == NonInitialized || initializedFlag == Initializing)
         {
-            initLocalization();
-            //return;
-        }
-
-        static bool initial_gps = false;
-		if(!initial_gps && waitGPSFix == true)
-		{
-            if (gpsQueue.empty())
-            {
-                ROS_WARN_THROTTLE(2, "gpsFixTopic is empty");
+            if (!initLocalization())
                 return;
-            }
-            else
-            {
-                initial_gps = true;
-                ROS_WARN_ONCE("gpsFixTopic initialised.");
-            }
         }
 
         std::lock_guard<std::mutex> lock(mtx);
@@ -320,43 +307,46 @@ public:
 
                 // gps factor
                 isGPSFix = false;
-                try
+                if (addGPSFactorflag == true)
                 {
-                    //checks if the fix is been published and if gpsTopic is to be considered
-                    if (gpsFixTopic != "" && gpsTopic != "" && to_string(gpsFixQueue.front().status.status) != "")
+                    try
                     {
-                        if (gpsFixTopic != "" && to_string(gpsFixQueue.front().status.status) !="")
+                        //checks if the fix is been published and if gpsTopic is to be considered
+                        if (gpsFixTopic != "" && gpsTopic != "" && to_string(gpsFixQueue.front().status.status) != "")
                         {
-                            sensor_msgs::NavSatFix thisGPScheck;
-                            if (&gpsFixQueue.front() != nullptr)
+                            if (gpsFixTopic != "" && to_string(gpsFixQueue.front().status.status) !="")
                             {
-                                thisGPScheck = gpsFixQueue.front();
-                                // cout << "****************************************************" << endl;
-                                // cout << "Found Status : "<< to_string(thisGPScheck.status.status) << endl;
-                                if (to_string(thisGPScheck.status.status) == "2")
+                                sensor_msgs::NavSatFix thisGPScheck;
+                                if (&gpsFixQueue.front() != nullptr)
                                 {
-                                    cout << "****************************************************" << endl;
-                                    cout << "Adding GPS Factor - GPS Status: " << to_string(thisGPScheck.status.status)  << std::endl;
-                                    isGPSFix = true;
+                                    thisGPScheck = gpsFixQueue.front();
+                                    // cout << "****************************************************" << endl;
+                                    // cout << "Found Status : "<< to_string(thisGPScheck.status.status) << endl;
+                                    if (to_string(thisGPScheck.status.status) == "2")
+                                    {
+                                        cout << "****************************************************" << endl;
+                                        cout << "Adding GPS Factor - GPS Status: " << to_string(thisGPScheck.status.status)  << std::endl;
+                                        isGPSFix = true;
+                                    }
+                                    else
+                                    {
+                                        cout << "****************************************************" << endl;
+                                        cout << "Not Adding GPS Factor - GPS Status: " << to_string(thisGPScheck.status.status)  << std::endl;
+                                    }
                                 }
                                 else
                                 {
+                                    //There is no gps been published so disable gps topic
                                     cout << "****************************************************" << endl;
-                                    cout << "Not Adding GPS Factor - GPS Status: " << to_string(thisGPScheck.status.status)  << std::endl;
+                                    cout << "GPS topic is not going to be used. " << std::endl;
                                 }
-                            }
-                            else
-                            {
-                                //There is no gps been published so disable gps topic
-                                cout << "****************************************************" << endl;
-                                cout << "GPS topic is not going to be used. " << std::endl;
                             }
                         }
                     }
-                }
-                catch (std::bad_alloc & exception)
-                {
-                    std::cerr << "\n" << exception.what() << "-> Bad Memory Allocation: Is GPS Fix or GPS Status been published? \n";
+                    catch (std::bad_alloc & exception)
+                    {
+                        std::cerr << "\n" << exception.what() << "-> Bad Memory Allocation: Is GPS Fix or GPS Status been published? \n";
+                    }
                 }
 
                 dm.performDistributedMapping(pose_to, keyframe, timeLaserInfoStamp, gpsQueue, isGPSFix);
@@ -1919,37 +1909,44 @@ public:
         initialPose[3] = float(x1 - x0);
         initialPose[4] = float(y1 - y0);
         initialPose[5] = 0;
-
-        cout << "x: " << initialPose[3]  << std::endl;
-        cout << "y: " << initialPose[4]  << std::endl;
-        cout << "z: " << initialPose[5]  << std::endl;
     }
 
-    void initLocalization()
+    bool initLocalization()
     {
-        // GPS
-        if (gpsInitialLocalization == true)
+        try
         {
-            bool testGPS = true;
+            // GPS
             sensor_msgs::NavSatFix thisGPScheck;
             thisGPScheck = gpsFixQueue.front();
             if (to_string(thisGPScheck.status.status) == "2")
             {
+                gpsFixQueue.clear();
+
                 performInitGPS(thisGPScheck);
+
+                transformTobeMapped[3] = initialPose[3];
+                transformTobeMapped[4] = initialPose[4];
+                transformTobeMapped[5] = initialPose[5];
+
+                initializedFlag = Initialized;
+
+                ROS_INFO("GPS Fix ok. GPS initialization performed.");
+                ROS_INFO("Initial Pose: %f, %f, %f", initialPose[3], initialPose[4], initialPose[5]);
+
+                return true;
             }
             else
             {
-                return;
+                gpsFixQueue.clear();
+                ROS_WARN_ONCE("GPS is not fix.");
+                return false;
             }
         }
-
-        //updateInitialGuess();
-
-        transformTobeMapped[3] = initialPose[3];
-        transformTobeMapped[4] = initialPose[4];
-        transformTobeMapped[5] = initialPose[5];
-
-        initializedFlag = Initialized;
+        catch(const std::exception& ex)
+        {
+            ROS_WARN_ONCE("There is no information about GPS Fix: %s.", ex.what());
+            return false;
+        }
     }
 };
 
