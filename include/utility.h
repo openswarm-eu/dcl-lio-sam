@@ -160,6 +160,11 @@ public:
     bool gpsInitialLocalization;
     double gpsBaseStationLat;
     double gpsBaseStationLong;
+    bool gpsInitialLocal;
+    double gpsInitLat;
+    double gpsInitLong;
+    double imuInitYaw;
+    double imuFrequency;
     bool addGPSFactorflag;
     bool isGPSFix = false;
 
@@ -281,6 +286,11 @@ public:
         nh.param<bool>("lio_sam/gpsInitialLocalization", gpsInitialLocalization, true);
         nh.param<double>("lio_sam/gpsBaseStationLat", gpsBaseStationLat, 41.22060674);
         nh.param<double>("lio_sam/gpsBaseStationLong", gpsBaseStationLong, -8.52731794);
+        nh.param<bool>("lio_sam/gpsInitialLocal", gpsInitialLocal, false);
+        nh.param<double>("lio_sam/gpsInitLat", gpsInitLat, 41.22060674);
+        nh.param<double>("lio_sam/gpsInitLong", gpsInitLong, -8.52731794);
+        nh.param<double>("lio_sam/imuInitYaw", imuInitYaw, 0.0);
+        nh.param<double>("lio_sam/imuFrequency", imuFrequency, 100.0);
         nh.param<bool>("lio_sam/addGPSFactorflag", addGPSFactorflag, true);
 
         usleep(100);

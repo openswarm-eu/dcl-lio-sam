@@ -951,7 +951,7 @@ public:
             transformTobeMapped[2] = cloudInfo.imuYawInit;
 
             if (!useImuHeadingInitialization)
-                transformTobeMapped[2] = 0;
+                transformTobeMapped[2] = imuInitYaw;
 
             // lastImuTransformation = pcl::getTransformation(0, 0, 0, cloudInfo.imuRollInit, cloudInfo.imuPitchInit, cloudInfo.imuYawInit); // save imu before return;
             lastImuTransformation = pcl::getTransformation(initialPose[3], initialPose[4], initialPose[5], //
@@ -1903,7 +1903,15 @@ public:
     {
         double x1, y1, x0, y0;
 
-        RobotLocalization::NavsatConversions::UTM(thisGPScheck.latitude,thisGPScheck.longitude, &x1, &y1);
+        if (gpsInitialLocal == false)
+        {
+            RobotLocalization::NavsatConversions::UTM(thisGPScheck.latitude,thisGPScheck.longitude, &x1, &y1);
+        }
+        else
+        {
+            RobotLocalization::NavsatConversions::UTM(gpsInitLat,gpsInitLong, &x1, &y1);
+        }
+
         RobotLocalization::NavsatConversions::UTM(gpsBaseStationLat, gpsBaseStationLong, &x0, &y0);
 
         initialPose[3] = float(x1 - x0);
@@ -1913,6 +1921,25 @@ public:
 
     bool initLocalization()
     {
+        if (gpsInitialLocal == true)
+        {
+            gpsFixQueue.clear();
+
+            sensor_msgs::NavSatFix thisGPScheck;
+            performInitGPS(thisGPScheck);
+
+            transformTobeMapped[3] = initialPose[3];
+            transformTobeMapped[4] = initialPose[4];
+            transformTobeMapped[5] = initialPose[5];
+
+            initializedFlag = Initialized;
+
+            ROS_INFO("Local initialization performed.");
+            ROS_INFO("Initial Pose: %f, %f, %f", initialPose[3], initialPose[4], initialPose[5]);
+
+            return true;
+        }
+
         try
         {
             // GPS
