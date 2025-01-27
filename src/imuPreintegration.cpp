@@ -122,14 +122,19 @@ public:
 
         // publish tf
         static tf::TransformBroadcaster tfOdom2BaseLink;
+        static tf::TransformBroadcaster tfOdom2BaseLink_;
         tf::Transform tCur;
         tf::poseMsgToTF(laserOdometry.pose.pose, tCur);
         if(lidarFrame != baselinkFrame)
             tCur = tCur * lidar2Baselink;
 
         tf::StampedTransform odom_2_baselink;
-        if(mapFrameAsChild)
+        tf::StampedTransform odom_2_baselink_normal;
+        if(mapFrameAsChild){
             odom_2_baselink = tf::StampedTransform(tCur.inverse(), odomMsg->header.stamp, name +"/"+ baselinkFrame, name +"/"+ odometryFrame);
+            odom_2_baselink_normal = tf::StampedTransform(tCur, odomMsg->header.stamp, name +"/"+ odometryFrame +"_", name +"/"+ baselinkFrame);
+            tfOdom2BaseLink_.sendTransform(odom_2_baselink_normal);
+        }
         else
             odom_2_baselink = tf::StampedTransform(tCur, odomMsg->header.stamp, name +"/"+ odometryFrame, name +"/"+ baselinkFrame);
         tfOdom2BaseLink.sendTransform(odom_2_baselink);
