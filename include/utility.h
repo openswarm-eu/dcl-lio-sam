@@ -70,6 +70,7 @@ public:
 	std::string name;
     std::string robot_id;
     bool name_list;
+    std::vector<std::string> robot_names;
 
     //Topics
     string pointCloudTopic;
@@ -171,7 +172,8 @@ public:
     ParamServer()
     {
 		// Robot info
-        nh.param<bool>("/name_list", name_list, false);
+        nh.param<std::vector<std::string>>("/robot_names", robot_names, std::vector<std::string>());
+        name_list = !robot_names.empty();
         std::string ns = nh.getNamespace(); // namespace of robot
 
         if(name_list == false)
@@ -185,7 +187,7 @@ public:
         }
         else
         {
-            name = ns.substr(1, 4); // remove '/' character
+            name = ns.substr(1); // remove '/' character
         }
 
         nh.param<std::string>("/robot_id", robot_id, "roboat");
