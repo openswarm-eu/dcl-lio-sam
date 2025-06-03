@@ -251,12 +251,12 @@ public:
 
         if (gpsInitialLocalization == false)
         {
-            ROS_INFO("DCL-SLAM will not be initialised with GPS.");
+            ROS_INFO("DCL-SLAM will not update initial pose.");
             initializedFlag = Initialized;
         }
         else
         {
-            ROS_INFO("DCL-SLAM will be initialised with GPS.");
+            ROS_INFO("DCL-SLAM will update initial pose.");
             initializedFlag = NonInitialized;
         }
     }
@@ -325,13 +325,14 @@ public:
                                     if (to_string(thisGPScheck.status.status) == "2")
                                     {
                                         cout << "****************************************************" << endl;
-                                        cout << "Adding GPS Factor - GPS Status: " << to_string(thisGPScheck.status.status)  << std::endl;
+                                        cout << "GPS Status: " << to_string(thisGPScheck.status.status)  << std::endl;
                                         isGPSFix = true;
                                     }
                                     else
                                     {
                                         cout << "****************************************************" << endl;
                                         cout << "Not Adding GPS Factor - GPS Status: " << to_string(thisGPScheck.status.status)  << std::endl;
+                                        return;
                                     }
                                 }
                                 else
