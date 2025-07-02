@@ -129,11 +129,11 @@ public:
             tCur = tCur * lidar2Baselink;
 
         tf::StampedTransform odom_2_baselink;
-        tf::StampedTransform odom_2_baselink_normal;
+        // tf::StampedTransform odom_2_baselink_normal;
         if(mapFrameAsChild){
             odom_2_baselink = tf::StampedTransform(tCur.inverse(), odomMsg->header.stamp, name +"/"+ baselinkFrame, name +"/"+ odometryFrame);
-            odom_2_baselink_normal = tf::StampedTransform(tCur, odomMsg->header.stamp, name +"/"+ odometryFrame +"_", name +"/"+ baselinkFrame);
-            tfOdom2BaseLink_.sendTransform(odom_2_baselink_normal);
+            // odom_2_baselink_normal = tf::StampedTransform(tCur, odomMsg->header.stamp, name +"/"+ odometryFrame +"_", name +"/"+ baselinkFrame);
+            // tfOdom2BaseLink_.sendTransform(odom_2_baselink_normal);
         }
         else
             odom_2_baselink = tf::StampedTransform(tCur, odomMsg->header.stamp, name +"/"+ odometryFrame, name +"/"+ baselinkFrame);
